@@ -97,6 +97,7 @@ class NN{
 	public:
 	  NN(){ }; // constructor
 	  int LoadTrainingSet(string file,int nInp,int nHid , int nOut);
+	  int LoadWorkingSet(string file, int nInp,int nHid , int nOut);
 	  void DisplayDigit(int nImage); // ASCII art display
 	  int InitNet(double min, double max);
 	  void GetTrainingEntry(int iTrainRow);
@@ -162,6 +163,40 @@ int NN::LoadTrainingSet(string file,int nInp,int nHid,int nOut){
 	return 0;
 }
 
+int NN::LoadWorkingSet(string file,int nInp,int nHid,int nOut){
+	std::ifstream data(file);
+    std::string line;
+    nTrainingEntries = 0;
+    nInputs = nInp;
+    nOutputs = nOut;
+    nHiddenNeurons = nHid;
+    // count number of lines in input file
+    while(std::getline(data,line)) { nTrainingEntries++; }
+    cout<<" Thera are "<<nTrainingEntries<<" entries in dataset"<<endl;
+    // reserve the memory
+    inputsTraining = new double[nTrainingEntries*nInputs];
+    // rewind the file
+    data.clear();
+    data.seekg(0);
+    // read training data file
+    for(int iim = 0; iim<nTrainingEntries; iim++) {
+		std::getline(data,line);
+    	//cout<<" iim= "<<iim<<" Input: "<<line<<endl;
+        std::stringstream lineStream(line);
+        std::string cell;
+        int count = 0;
+        // break input string into inputs and answers
+        while(std::getline(lineStream,cell,' ')) {
+            if (count<nInputs) { 
+				inputsTraining[iim*nInputs+count] = atof(cell.c_str()) ;
+			}
+          count++;
+        }
+    }
+    cout<<"Working set loaded."<<endl;
+    data.close();
+	return 0;
+}
 
 
 // reserves the memory and puts
@@ -209,8 +244,7 @@ void NN::GetTrainingEntry(int iTrainRow){
 	for ( int i = 0 ; i<nInputs;i++)
 	   currentInputs[i] = inputsTraining[iTrainRow*nInputs+i];
 	for (int i = 0 ; i < nOutputs;i++)   
-	  currentAnswers[i]= outputsTraining[iTrainRow*nOutputs+i];
-	
+	  currentAnswers[i] = outputsTraining[iTrainRow*nOutputs+i];
 }
 
 // display digit on the screen as ASCII
@@ -268,11 +302,10 @@ void NN::DirectGradientEstimation(){
 	double e0;
 	double e1;
 	
-	
 	ForwardProp();
 	e0 = sumOfOutputErrors;
 	
-	// hidden neurons
+	// hidden neurons bias calc
 	for(int bHid=0; bHid < nHiddenNeurons; bHid++){		
 		biasHidden[bHid] = biasHidden[bHid] + dw; // takes step for gradient estimation
 		ForwardProp(); 
@@ -281,6 +314,7 @@ void NN::DirectGradientEstimation(){
 		biasHidden[bHid] = biasHidden[bHid] - dw; // reverts step
 	}
 	
+	// hidden neuron weight calc
 	for(int wHid=0; wHid < nHiddenNeurons*nInputs; wHid++){
 		weightsHidden[wHid] = weightsHidden[wHid] + dw;
 		ForwardProp();
@@ -289,7 +323,7 @@ void NN::DirectGradientEstimation(){
 		weightsHidden[wHid] = weightsHidden[wHid] - dw;
 	}
 	
-	// output neurons
+	// output neuron bias calc
 	for(int bOut=0; bOut < nOutputs; bOut++){
 		biasOutput[bOut] = biasOutput[bOut] + dw; // takes step for gradient estimation
 		ForwardProp(); 
@@ -298,8 +332,9 @@ void NN::DirectGradientEstimation(){
 		biasOutput[bOut] = biasOutput[bOut] - dw; // reverts step
 	}
 	
+	// hidden neuron weight calc
 	for(int wOut=0; wOut < nHiddenNeurons*nOutputs; wOut++){
-		weightsOutput[wOut] = weightsOutput[wOut] + dw;
+		weightsOutput[wOut] = weightsOutput[wOut] + dw; 
 		ForwardProp();
 		e1 = sumOfOutputErrors;
 		d_weightsOutput[wOut] = (e1-e0)/dw;
@@ -309,8 +344,39 @@ void NN::DirectGradientEstimation(){
 
 
 // calculate gradients by back-propagation
-void NN::BackProp(){
+void NN::BackProp(){	
+	//output layer delta calculation
+	for(int out=0; out < nOutputs; out++){
+		deltaOutput[out] = d_activation(netOutput[out])*currentError[out];
+	}
 	
+	//hidden layer delta calculation
+	for(int hid=0; hid < nHiddenNeurons; hid++){		
+		deltaHidden[hid] = 0.0;
+		for (int out = 0 ; out < nOutputs ; out++){
+			deltaHidden[hid] = deltaHidden[hid] + deltaOutput[out]*weightsOutput[out*nHiddenNeurons+hid]*d_activation(netHidden[hid]);
+		}
+	}
+	
+	//assigning gradients for bias and weights in hidden layer
+	for(int hid=0; hid < nHiddenNeurons; hid++){		
+		double delta = deltaHidden[hid];
+		d_biasHidden[hid] = delta; // bias gradient
+		
+		for(int inp=0; inp < nInputs; inp++){
+			d_weightsHidden[hid*nInputs + inp] = delta*currentInputs[inp]; // weight gradient
+		}	
+	}
+	
+	//assigning gradients for bias and weights in hidden layer
+	for(int out=0; out < nOutputs; out++){
+		double delta = deltaOutput[out];
+		d_biasOutput[out] = delta; // bias gradient
+		
+		for(int hid=0; hid < nHiddenNeurons; hid++){
+			d_weightsOutput[out*nHiddenNeurons + hid] = delta*outHidden[hid]; // weight gradient
+		}
+	}
 }
 
 // change weights and biases in direction oppposite to gradient,
@@ -353,7 +419,7 @@ double NN::TotalDatasetError(){ // sum of errors for all rows of train data
 void NN::Train1(){
 	// set net search parameters
 	dw = 0.001;  // step to estimate gradient
-	learningRate = -0.1;
+	learningRate = -0.4;
     //DisplayDigit(iImage);
     InitNet(-0.1,0.1);
     int iImage = 0;
@@ -366,8 +432,8 @@ void NN::Train1(){
 	  // copy inputs and outputs from training matrix into neural netg
   	  GetTrainingEntry(iImage);
       ForwardProp();
-      DirectGradientEstimation();
-      //BackProp();
+      //DirectGradientEstimation();
+      BackProp();
       StepByGradient();
       cout<<"step: "<<searchStep;//<<" image: "<<iImage<<" Error for current row:"<<GetOutputError();
       cout<<" Total dataset error: "<< TotalDatasetError()<<endl;
@@ -416,6 +482,7 @@ int main(){
 	//cout<< " Timing Gradient:"<< chrono::duration_cast<std::chrono::milliseconds>(t8 - t7).count() << " ms\n";
 	
 	neuralNet.Train1();
+	neuralNet.LoadWorkingSet("work.txt", 64, 128, 8);
 	
 	while ( imageIndex < 750){
 	  cout<<" Enter index of the image to display: "; cin>>imageIndex;
