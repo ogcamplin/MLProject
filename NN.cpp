@@ -124,7 +124,7 @@ int NN::LoadTrainingSet(string file,int nInp,int nHid,int nOut){
     nHiddenNeurons = nHid;
     // count number of lines in input file
     while(std::getline(data,line)) { nTrainingEntries++; }
-    cout<<" Thera are "<<nTrainingEntries<<" entries in dataset"<<endl;
+    cout<<" There are "<<nTrainingEntries<<" entries in training dataset"<<endl;
     // reserve the memory
     inputsTraining = new double[nTrainingEntries*nInputs];
     outputsTraining = new double[nTrainingEntries*nOutputs];
@@ -155,7 +155,7 @@ int NN::LoadTrainingSet(string file,int nInp,int nHid,int nOut){
         //char stop;
         //cin>>stop; 
     } // for
-    cout<<" Training set loaded. Inputs:"<<endl;
+    cout<<" Training set loaded."<<endl;
     //char stop;
     //cin>>stop; 
     //inputsTraining.PrintMatrix();
@@ -172,7 +172,6 @@ int NN::LoadWorkingSet(string file,int nInp,int nHid,int nOut){
     nHiddenNeurons = nHid;
     // count number of lines in input file
     while(std::getline(data,line)) { nTrainingEntries++; }
-    cout<<" Thera are "<<nTrainingEntries<<" entries in dataset"<<endl;
     // reserve the memory
     inputsTraining = new double[nTrainingEntries*nInputs];
     // rewind the file
@@ -193,7 +192,7 @@ int NN::LoadWorkingSet(string file,int nInp,int nHid,int nOut){
           count++;
         }
     }
-    cout<<"Working set loaded."<<endl;
+    cout<<" Working set loaded."<<endl;
     data.close();
 	return 0;
 }
@@ -415,13 +414,11 @@ double NN::TotalDatasetError(){ // sum of errors for all rows of train data
 }
 
 
-
 void NN::Train1(){
 	// set net search parameters
 	dw = 0.001;  // step to estimate gradient
 	learningRate = -0.4;
     //DisplayDigit(iImage);
-    InitNet(-0.1,0.1);
     int iImage = 0;
     srand (time(NULL));  // seed random number generator
     int searchStep = 0;
@@ -439,7 +436,7 @@ void NN::Train1(){
       cout<<" Total dataset error: "<< TotalDatasetError()<<endl;
       searchStep++;
     }
-     
+    cout<<" TRAINING COMPLETE"<<endl;
 }
 
 void NN::PrintOutputs(){
@@ -454,15 +451,15 @@ void NN::PrintOutputs(){
 void NN::DisplayResults(){
 	int iImage = -1;
 	cout<<" There are "<< nTrainingEntries<<" entries "<<endl;
-	cout<<" Enter number of the entry to display"<<endl;
-	cin>>iImage;
+	
 	while (iImage < nTrainingEntries) {
 	  // copy inputs and outputs from big matrix
+	  cout<<" Enter number of the entry to display: "; cin>>iImage;
 	  GetTrainingEntry(iImage);
 	  ForwardProp();
       DisplayDigit(iImage);
-      PrintVector(currentOutputs, nOutputs);
-      cin>>iImage;
+      //PrintVector(currentOutputs, nOutputs);
+      PrintOutputs();
    }
     
 }
@@ -471,9 +468,7 @@ void NN::DisplayResults(){
 int main(){
 	NN neuralNet;
 	neuralNet.LoadTrainingSet("train.txt",64,128,8);
-	neuralNet.DisplayDigit(10);
 	
-	int imageIndex = 0 ;
 	neuralNet.InitNet(-0.1,0.1);
 	neuralNet.ForwardProp();
 	//auto t7 = std::chrono::system_clock::now();
@@ -483,15 +478,5 @@ int main(){
 	
 	neuralNet.Train1();
 	neuralNet.LoadWorkingSet("work.txt", 64, 128, 8);
-	
-	while ( imageIndex < 750){
-	  cout<<" Enter index of the image to display: "; cin>>imageIndex;
-	  if (imageIndex<759){
-		   neuralNet.GetTrainingEntry(imageIndex);
-	       neuralNet.ForwardProp();
-    	   neuralNet.DisplayDigit(imageIndex);
-	       neuralNet.PrintOutputs();
-      }
-    }
-     
+	neuralNet.DisplayResults();	
 }
